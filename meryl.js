@@ -19,7 +19,7 @@ meryl.h('GET /pre', function(){
 		if (!error && response.statusCode == 200) {
 			trsslate(body,selector,m);
 		} else {
-			m.send("Error + " response)
+			m.send("Error: " +  response)
 		}
 	})
 })
