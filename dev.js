@@ -6,8 +6,8 @@ var request = require('request'),
 var uri = 'http://active.cobini.local/posts/feeds/rss.xml';
 var selector = '#post-title, div#post-description';
 
-var uri = 'http://feeds.feedburner.com/Explosm'
-var selector = '#maincontentx'
+// var uri = 'http://feeds.feedburner.com/Explosm'
+// var selector = '#maincontentx'
 
 request({uri:uri}, function(error,response,body){
 	if (!error && response.statusCode == 200) {
@@ -16,6 +16,21 @@ request({uri:uri}, function(error,response,body){
 		sys.puts("ERROR " + response)
 	}
 })
+
+
+
+// 
+var uri = 'http://active.cobini.local/posts/feeds/rss.xml';
+var selector = '#post-description';
+
+request({uri:uri}, function(error,response,body){
+	if (!error && response.statusCode == 200) {
+		trsslate(body,selector);
+	} else {
+		sys.puts("ERROR " + response)
+	}
+})
+
 
 
 

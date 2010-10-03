@@ -1,38 +1,25 @@
 var Apricot = require('apricot').Apricot;
 
 exports.trsslate = function(rss,selector,meryl_h){
-	var return_str = ''
-	
-	var links = rss.
-			substring(rss.indexOf('<item')).
-			match(/<link>([^<]*)<\/link>/g).
-			map(function(m){return m.
-				match('>(.*)<')[1]}
-			);
-	
-	i = 0;
 	
 	//this till read the rss to a tag
-	function read(tag){
-		to = (tag == undefined) ? rss.substring(i).length : rss.substring(i).indexOf('<'+tag)
-		return rss.substring(i, i += to);
+	function read(o,tag){
+		to = (tag ==  undefined) ? o.src.substring(o.i).length : o.src.substring(o.i).indexOf('<'+tag)
+		from = o.i;
+		to = o.i + to;
+		o.i = to;
+		return o.src.substring(from,to);
 	}
-	function out(str){
-		return return_str += str
-	}
-	
 
-	
-	function consume(links){
-		out(read('item'));
-		
-		link = links.shift();
+	function consume(obj){
+		obj.output += read(obj,'item');
+		link = obj.links.shift();
 		console.log('checking ',link)
 		
 		if(link){
-			out(read('description'));
-			read('/description') //skip
-			out('<description>')
+			obj.output += read(obj,'description');
+			read(obj,'/description'); //skip
+			obj.output += '<description><![CDATA['
 			
 			Apricot.open(link, function(doc) {
 				doc.find(selector);
@@ -40,19 +27,31 @@ exports.trsslate = function(rss,selector,meryl_h){
 				doc.each(function(e){
 					content += e.innerHTML
 				});
-				out(content);
-			consume(links);
+				obj.output += content;
+				obj.output += ']]>'
+			consume(obj);
 			});
 		} else {
-			var ret = out(read());
-			if(meryl_h != undefined){
-				meryl_h.send(ret);
+			obj.output += read(obj);
+			if(obj.m != undefined){
+				obj.m.send(obj.output, { 'Content-Type': 'application/xml' }, 200);
 			} else {	
-				console.log(ret);
+				console.log(obj.output);
 			}
 		}
 	}
 	
-	consume(links);
-	
+	consume({
+		src : rss,
+		selector : selector,
+		output : '',
+		i : 0,
+		m : meryl_h,
+		links : rss.
+				substring(rss.indexOf('<item')).
+				match(/<link>([^<]*)<\/link>/g).
+				map(function(m){return m.
+					match('>(.*)<')[1]})
+	});
+
 }

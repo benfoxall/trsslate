@@ -8,13 +8,11 @@ meryl.h('GET /',function(){
 
 
 meryl.h('GET /pre', function(){
-	var uri = this.params.u;
-	var selector = this.params.s;
+	uri = this.params.u;
+	selector = this.params.s;
 	console.log("URI=",uri, ",Selector=", selector);
 	
-	var m = this;
-	this.headers['Content-Type'] = 'application/xml';
-	
+	m = this;
 	request({uri:uri}, function(error,response,body){
 		if (!error && response.statusCode == 200) {
 			trsslate(body,selector,m);
