@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>OCA</title>
+    <link>http://localhost:3001/simple/</link>
+    <description>Cricket Clubs in Oxford</description>
+    <item>
+      <title>Item 1</title>
+      <description>Item 1 description</description>
+      <pubDate>Fri, 10 Jun 2010 15:34:43 +0100</pubDate>
+      <guid>http://localhost:3001/simple/page1.html</guid>
+      <link>http://localhost:3001/simple/page1.html</link>
+    </item>
+    <item>
+      <title>Item 2</title>
+      <description>Item 2 description</description>
+      <pubDate>Fri, 10 Jun 2010 15:34:43 +0100</pubDate>
+      <guid>http://localhost:3001/simple/page2.html</guid>
+      <link>http://localhost:3001/simple/page2.html</link>
+    </item>
+    <item>
+      <title>Item 3</title>
+      <description>Item 2 description</description>
+      <pubDate>Fri, 10 Jun 2010 15:34:43 +0100</pubDate>
+      <guid>http://localhost:3001/simple/page2.html</guid>
+      <link>http://localhost:3001/simple/page2.html</link>
+    </item>
+  </channel>
+</rss>

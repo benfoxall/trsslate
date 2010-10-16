@@ -1,57 +1,161 @@
-var Apricot = require('apricot').Apricot;
+var select = require('soupselect').select,
+	htmlparser = require('./lib/node-htmlparser'),
+	http = require('http'),
+	sys = require('sys'),
+	parse_url = require('url').parse;
+	log = require('./util').log
+	error = require('./util').error
 
-exports.trsslate = function(rss,selector,meryl_h){
-	
-	//this till read the rss to a tag
-	function read(o,tag){
-		to = (tag ==  undefined) ? o.src.substring(o.i).length : o.src.substring(o.i).indexOf('<'+tag)
-		from = o.i;
-		to = o.i + to;
-		o.i = to;
-		return o.src.substring(from,to);
-	}
 
-	function consume(obj){
-		obj.output += read(obj,'item');
-		link = obj.links.shift();
-		console.log('checking ',link)
-		
-		if(link){
-			obj.output += read(obj,'description');
-			read(obj,'/description'); //skip
-			obj.output += '<description><![CDATA['
-			
-			Apricot.open(link, function(doc) {
-				doc.find(selector);
-				content = '';
-				doc.each(function(e){
-					content += e.innerHTML
-				});
-				obj.output += content;
-				obj.output += ']]>'
-			consume(obj);
-			});
-		} else {
-			obj.output += read(obj);
-			if(obj.m != undefined){
-				obj.m.send(obj.output, { 'Content-Type': 'application/xml' }, 200);
-			} else {	
-				console.log(obj.output);
-			}
-		}
-	}
+var update = function(item,callback){
 	
-	consume({
-		src : rss,
-		selector : selector,
-		output : '',
-		i : 0,
-		m : meryl_h,
-		links : rss.
-				substring(rss.indexOf('<item')).
-				match(/<link>([^<]*)<\/link>/g).
-				map(function(m){return m.
-					match('>(.*)<')[1]})
+	var url = parse_url(item.link);
+	var client = http.createClient(80, url.host);
+	var path = url.pathname + (url.search ? url.search : '');
+	var request = client.request('GET', path,{'host': url.host});
+	log("<- ", item.link)
+	
+	var handler = new htmlparser.DefaultHandler(function(err,dom){
+		item.page_dom = dom
+		callback.call()
 	});
-
+	var parser = new htmlparser.Parser(handler);
+	
+	request.on('response', function (response) {
+		log("-> ", item.link)
+		response.setEncoding('utf8');
+		switch (response.statusCode){
+			case 200:
+			response.on('data', function (chunk) {
+			    parser.parseChunk(chunk)
+			});
+		    response.on('end', function() {
+				parser.done();
+			});
+			break;
+			case 301: case 302:
+			log('RR ', item.link, ' -> ', response.headers.location)
+			item.link = response.headers.location
+			update(item,callback)
+			break;
+			default:
+			log("Got response " + response.statusCode)
+			callback.call()
+		}
+	});
+	request.end();
+	
+	
 }
+
+var render = function(rss,selector,output){
+	try{
+	output.writeHead(200,{ 'Content-Type': 'application/xml; charset=utf-8' })
+	output.write('<?xml version="1.0" encoding="UTF-8" ?>\n')
+	output.write('<rss version="2.0">\n')
+	output.write('<channel>\n')
+	output.write('	<title>'+rss.title+'</title>\n')
+	output.write('	<description>'+rss.description+'</description>\n')
+	output.write('	<link>'+rss.link+'</link>\n')
+	
+	for (var i=0; i < rss.items.length; i++) {
+		var item = rss.items[i];
+		
+		output.write('<item>\n')
+		output.write('	<title>'+item.title+'</title>\n')
+		
+		if(item.page_dom){
+			try{
+			var titles = select(item.page_dom, selector);
+			output.write('	<description><![CDATA[')
+			for (var x=0; x < titles.length; x++) {
+				output.write(htmlparser.DomUtils.outerHTML(titles[x]))
+			};
+			output.write(']]></description>\n')
+			} catch (e){
+				output.write('	<description>An error occured scraping this page. (trsslate)</description>\n')
+			}
+		} else {
+			output.write('	<description>An error occured fetching this page. (trsslate)</description>\n')
+		}
+		
+		output.write('	<link>'+item.link+'</link>\n')
+		output.write('	<guid>'+item.id+'</guid>\n')
+		output.write('	<pubDate>'+item.pubDate+'</pubDate>\n')
+		output.write('</item>\n')
+	};
+	
+	output.write('</channel>\n')
+	output.write('</rss>\n')
+	output.end();
+	log('** << rendered', (new Date()).toUTCString())
+	}
+	catch(e){
+		log('ERROR OCCURED RENDERING')
+		log(e.stack)
+		output.send('An error occured')
+	}
+}
+
+
+var trsslate = function(feed_url,selector,output,max_directs){
+	if(max_directs && max_directs < 1){
+		return error('Max Redirects Reached')
+	}
+	
+	var url = parse_url(feed_url);
+	
+	var client = http.createClient(80, url.host);
+	var path = url.pathname + (url.search ? url.search : '');
+	var request = client.request('GET', path,{'host': url.host});
+	
+	
+	var handler = new htmlparser.RssHandler(function(err,rss){
+		// TODO if(err)
+		if(err || (rss.items == undefined)){
+			error("Could not parse rss",output)
+		} else {
+			var count = rss.items.length;
+			var added_callback = function(){
+				count--
+				if(count == 0){
+					log('** << rendering', rss.link)
+					render(rss,selector,output);
+				}
+			}
+			for (var i=0; i < rss.items.length; i++) {
+				update(rss.items[i],added_callback)
+			};
+		}
+	})
+	
+	
+	
+	var parser = new htmlparser.Parser(handler);
+	
+	request.on('response', function (response) {
+		switch (response.statusCode){
+			case 200:
+				response.setEncoding('utf8');
+				response.on('data', function (chunk) {
+				    parser.parseChunk(chunk)
+				});
+			    response.on('end', function() {
+					parser.done();
+				});
+				break;
+			case 302:
+			case 303:
+				log("Redirect> ", response.headers.location)
+				trsslate(response.headers.location,selector,output);
+				break;
+			default :
+				error('RSS returned with status ' + response.statusCode ,output);
+				break;
+		}
+	});
+	request.end();
+}
+
+
+exports.trsslate = trsslate;
