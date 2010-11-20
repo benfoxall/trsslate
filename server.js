@@ -20,6 +20,8 @@ app.get('/f', function(req, res){
 		trsslate(uri,selector,res)
 });
 
-app.listen(3000);
+port = process.argv[2] || 3000;
 
-log('Started')
+app.listen(port)
+
+log('Started trsslate on port ' + port)
