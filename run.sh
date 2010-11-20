@@ -5,7 +5,7 @@ echo \#\#\#\# STARTING $(date);
 while true;
  do 
 
-  node express.js
+  /home/ben/opt/bin/node server.js 80
 
   exit_value="$?" ;
   echo \#\#\#\# FATAL ERROR OCCURED - EXITED WITH $?
