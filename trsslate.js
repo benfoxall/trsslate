@@ -2,10 +2,13 @@ var select = require('soupselect').select,
 	htmlparser = require('./lib/node-htmlparser'),
 	http = require('http'),
 	sys = require('sys'),
-	parse_url = require('url').parse;
-	log = require('./util').log
-	error = require('./util').error
+	parse_url = require('url').parse,
+	log = require('./util').log,
+	// sizzle = require('node-sizzle').sizzleInit,
+	error = require('./util').error,
+	fs = require("fs");
 
+var jsdom = require('jsdom').jsdom;
 
 var update = function(item,callback){
 	
@@ -15,32 +18,28 @@ var update = function(item,callback){
 	var request = client.request('GET', path,{'host': url.host});
 	log("<- ", item.link)
 	
-	var handler = new htmlparser.DefaultHandler(function(err,dom){
-		item.page_dom = dom
-		callback.call()
-	});
-	var parser = new htmlparser.Parser(handler);
-	
 	request.on('response', function (response) {
 		log("-> ", item.link)
+		var back = "";
 		response.setEncoding('utf8');
 		switch (response.statusCode){
 			case 200:
-			response.on('data', function (chunk) {
-			    parser.parseChunk(chunk)
-			});
-		    response.on('end', function() {
-				parser.done();
-			});
+				response.on('data', function (chunk) {
+					back += chunk;
+				});
+			    response.on('end', function() {
+				    item.page_dom = jsdom(back);
+					callback.call()
+				});
 			break;
 			case 301: case 302:
-			log('RR ', item.link, ' -> ', response.headers.location)
-			item.link = response.headers.location
-			update(item,callback)
+				log('RR ', item.link, ' -> ', response.headers.location)
+				item.link = response.headers.location
+				update(item,callback)
 			break;
 			default:
-			log("Got response " + response.statusCode)
-			callback.call()
+				log("Got response " + response.statusCode)
+				callback.call()
 		}
 	});
 	request.end();
@@ -66,13 +65,24 @@ var render = function(rss,selector,output){
 		
 		if(item.page_dom){
 			try{
-			var titles = select(item.page_dom, selector);
-			output.write('	<description><![CDATA[')
-			for (var x=0; x < titles.length; x++) {
-				output.write(htmlparser.DomUtils.outerHTML(titles[x]))
-			};
-			output.write(']]></description>\n')
+				
+				var document = item.page_dom;
+				var window = {}
+				
+				//load sizzle
+				eval(fs.readFileSync("./deps/sizzle/sizzle.js", "utf8"))
+				
+				// console.log("selector : " + selector);
+				var elements = window.Sizzle(selector);
+				console.log("found " + elements.length, 'with', selector)
+				output.write('	<description><![CDATA[')
+				for (var x = 0; x < elements.length; x++) {
+					output.write(elements[x].outerHTML)
+					console.log('Loop ', x, elements[x].outerHTML)
+				};
+				output.write(']]></description>\n')
 			} catch (e){
+				console.log(e.message)
 				output.write('	<description>An error occured scraping this page. (trsslate)</description>\n')
 			}
 		} else {
@@ -88,7 +98,7 @@ var render = function(rss,selector,output){
 	output.write('</channel>\n')
 	output.write('</rss>\n')
 	output.end();
-	log('** << rendered', (new Date()).toUTCString())
+	log('** << rendered	', (new Date()).toUTCString())
 	}
 	catch(e){
 		log('ERROR OCCURED RENDERING')
