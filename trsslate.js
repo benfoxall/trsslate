@@ -1,50 +1,23 @@
 var select = require('soupselect').select,
-	htmlparser = require('./lib/node-htmlparser'),
-	http = require('http'),
+	htmlparser = require('./lib/node-htmlparser');
+var	http = require('http'),
 	sys = require('sys'),
 	parse_url = require('url').parse,
 	log = require('./util').log,
-	// sizzle = require('node-sizzle').sizzleInit,
 	error = require('./util').error,
 	fs = require("fs");
+
+var fetcher = require('./lib/fetch.js')
 
 var jsdom = require('jsdom').jsdom;
 
 var update = function(item,callback){
-	
-	var url = parse_url(item.link);
-	var client = http.createClient(80, url.host);
-	var path = url.pathname + (url.search ? url.search : '');
-	var request = client.request('GET', path,{'host': url.host});
-	log("<- ", item.link)
-	
-	request.on('response', function (response) {
-		log("-> ", item.link)
-		var back = "";
-		response.setEncoding('utf8');
-		switch (response.statusCode){
-			case 200:
-				response.on('data', function (chunk) {
-					back += chunk;
-				});
-			    response.on('end', function() {
-				    item.page_dom = jsdom(back);
-					callback.call()
-				});
-			break;
-			case 301: case 302:
-				log('RR ', item.link, ' -> ', response.headers.location)
-				item.link = response.headers.location
-				update(item,callback)
-			break;
-			default:
-				log("Got response " + response.statusCode)
-				callback.call()
-		}
-	});
-	request.end();
-	
-	
+	fetcher.fetchDOM(item.link,function(dom){
+		item.page_dom = dom
+		callback.call();
+	},function(err){
+		callback.call();
+	})
 }
 
 var render = function(rss,selector,output){
