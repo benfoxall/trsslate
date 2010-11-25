@@ -1,17 +1,42 @@
-var select = require('soupselect').select,
-	htmlparser = require('./lib/node-htmlparser');
-var	http = require('http'),
+var	htmlparser = require('./lib/node-htmlparser'),
 	sys = require('sys'),
-	parse_url = require('url').parse,
 	log = require('./util').log,
 	error = require('./util').error,
-	fs = require("fs");
+	fs = require("fs"),
+	fetcher = require('./lib/fetch.js')
 
-var fetcher = require('./lib/fetch.js')
+var trsslate = function(feed_url,selector,output){
+	
+	var handler = new htmlparser.RssHandler(function(err,rss){
+		// TODO if(err)
+		if(err || (rss.items == undefined)){
+			error("Could not parse rss",output)
+		} else {
+			var count = rss.items.length;
+			var added_callback = function(){
+				count--
+				if(count == 0){
+					log('** << rendering', rss.link)
+					render(rss,selector,output);
+				}
+			}
+			for (var i=0; i < rss.items.length; i++) {
+				appendDom(rss.items[i],added_callback)
+			};
+		}
+	})
+	
+	
+	var parser = new htmlparser.Parser(handler);
+	
+	fetcher.fetch(feed_url,function(rss){
+		parser.parseComplete(rss)
+	},error);
+	
+}
 
-var jsdom = require('jsdom').jsdom;
-
-var update = function(item,callback){
+//append the dom to each item
+var appendDom = function(item,callback){
 	fetcher.fetchDOM(item.link,function(dom){
 		item.page_dom = dom
 		callback.call();
@@ -19,6 +44,10 @@ var update = function(item,callback){
 		callback.call();
 	})
 }
+
+
+
+
 
 var render = function(rss,selector,output){
 	try{
@@ -47,11 +76,10 @@ var render = function(rss,selector,output){
 				
 				// console.log("selector : " + selector);
 				var elements = window.Sizzle(selector);
-				console.log("found " + elements.length, 'with', selector)
+				console.log(selector, ' matched ', elements.length, 'from', item.link)
 				output.write('	<description><![CDATA[')
 				for (var x = 0; x < elements.length; x++) {
 					output.write(elements[x].outerHTML)
-					console.log('Loop ', x, elements[x].outerHTML)
 				};
 				output.write(']]></description>\n')
 			} catch (e){
@@ -78,66 +106,6 @@ var render = function(rss,selector,output){
 		log(e.stack)
 		output.send('An error occured')
 	}
-}
-
-
-var trsslate = function(feed_url,selector,output,max_directs){
-	if(max_directs && max_directs < 1){
-		return error('Max Redirects Reached')
-	}
-	
-	var url = parse_url(feed_url);
-	
-	var client = http.createClient(80, url.host);
-	var path = url.pathname + (url.search ? url.search : '');
-	var request = client.request('GET', path,{'host': url.host});
-	
-	
-	var handler = new htmlparser.RssHandler(function(err,rss){
-		// TODO if(err)
-		if(err || (rss.items == undefined)){
-			error("Could not parse rss",output)
-		} else {
-			var count = rss.items.length;
-			var added_callback = function(){
-				count--
-				if(count == 0){
-					log('** << rendering', rss.link)
-					render(rss,selector,output);
-				}
-			}
-			for (var i=0; i < rss.items.length; i++) {
-				update(rss.items[i],added_callback)
-			};
-		}
-	})
-	
-	
-	
-	var parser = new htmlparser.Parser(handler);
-	
-	request.on('response', function (response) {
-		switch (response.statusCode){
-			case 200:
-				response.setEncoding('utf8');
-				response.on('data', function (chunk) {
-				    parser.parseChunk(chunk)
-				});
-			    response.on('end', function() {
-					parser.done();
-				});
-				break;
-			case 302:
-			case 303:
-				log("Redirect> ", response.headers.location)
-				trsslate(response.headers.location,selector,output);
-				break;
-			default :
-				error('RSS returned with status ' + response.statusCode ,output);
-				break;
-		}
-	});
-	request.end();
 }
 
 
