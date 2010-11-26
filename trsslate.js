@@ -13,15 +13,12 @@ var trsslate = function(feed_url,selector,output){
 			error("Could not parse rss",output)
 		} else {
 			var count = rss.items.length;
-			var added_callback = function(){
-				count--
-				if(count == 0){
-					log('** << rendering', rss.link)
-					render(rss,selector,output);
-				}
-			}
 			for (var i=0; i < rss.items.length; i++) {
-				appendDom(rss.items[i],added_callback)
+				appendDom(rss.items[i],function(){
+					if(count-- == 1){
+						render(rss,selector,output);
+					}
+				})
 			};
 		}
 	})
@@ -32,7 +29,7 @@ var trsslate = function(feed_url,selector,output){
 	fetcher.fetch(feed_url,function(rss){
 		parser.parseComplete(rss)
 	},error);
-	
+
 }
 
 //append the dom to each item
@@ -48,7 +45,7 @@ var appendDom = function(item,callback){
 
 
 
-
+/* TODO : refactor this...*/
 var render = function(rss,selector,output){
 	try{
 	output.writeHead(200,{ 'Content-Type': 'application/xml; charset=utf-8' })
