@@ -7,6 +7,8 @@ var	htmlparser = require('./lib/node-htmlparser'),
 
 var trsslate = function(feed_url,selector,output){
 	
+	var start = Date.now();
+	
 	var handler = new htmlparser.RssHandler(function(err,rss){
 		// TODO if(err)
 		if(err || (rss.items == undefined)){
@@ -16,7 +18,8 @@ var trsslate = function(feed_url,selector,output){
 			for (var i=0; i < rss.items.length; i++) {
 				appendDom(rss.items[i],function(){
 					if(count-- == 1){
-						render(rss,selector,output);
+						log_message = ">>>" + feed_url + " (" + selector + ")"
+						render(rss,selector,output,start,log_message);
 					}
 				})
 			};
@@ -26,7 +29,7 @@ var trsslate = function(feed_url,selector,output){
 	
 	var parser = new htmlparser.Parser(handler);
 	
-	fetcher.fetch(feed_url,function(rss){
+	fetcher.fetch_cached(10, feed_url,function(rss){
 		parser.parseComplete(rss)
 	},error);
 
@@ -46,7 +49,7 @@ var appendDom = function(item,callback){
 
 
 /* TODO : refactor this...*/
-var render = function(rss,selector,output){
+var render = function(rss,selector,output,starttime,message){
 	try{
 	output.writeHead(200,{ 'Content-Type': 'application/xml; charset=utf-8' })
 	output.write('<?xml version="1.0" encoding="UTF-8" ?>\n')
@@ -73,7 +76,7 @@ var render = function(rss,selector,output){
 				
 				// console.log("selector : " + selector);
 				var elements = window.Sizzle(selector);
-				console.log(selector, ' matched ', elements.length, 'from', item.link)
+				console.log('--sizzle-matches', elements.length, 'using', selector, '(', item.link, ')')
 				output.write('	<description><![CDATA[')
 				for (var x = 0; x < elements.length; x++) {
 					output.write(elements[x].outerHTML)
@@ -96,7 +99,7 @@ var render = function(rss,selector,output){
 	output.write('</channel>\n')
 	output.write('</rss>\n')
 	output.end();
-	log('** << rendered	', (new Date()).toUTCString())
+	log(message, 'in', (new Date() - starttime) / 1000, 'seconds, at', new Date().toGMTString())
 	}
 	catch(e){
 		log('ERROR OCCURED RENDERING')
