@@ -16,9 +16,9 @@ app.get('/f', function(req, res){
 		uri = req.query['u'];
 		selector = req.query['s'];
 		
-		log('** >>', uri, selector, req.socket.remoteAddress, (new Date()).toUTCString());
 		trsslate(uri,selector,res)
 });
+
 
 port = process.argv[2] || 3000;
 
