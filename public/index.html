@@ -5,73 +5,26 @@
 			trsslate
 		</title>
 		<style type="text/css" media="screen">
-		body {
-			font-family: Helvetica,Arial,sans-serif;
-			font-size: 1.5em;
-			margin:0;
-			text-align: center;
-			background-color:#8f0;
-		}
-		input[type=submit]{
-			display:inline;
-			color:#fff;
-			font-size:5em;
-			margin:0;
-			padding:.2em;
-			font-weight: normal;
-			text-transform: uppercase;
-			background-color:#8f0;
-			text-align:center;
-			color:#73BE1E;
-		}
-		input[value='trsslate!']{
-			cursor: pointer;
-			color:#fff;
-		}
-		p{
-			color:#fff;
-		}
-		input {
-			border:0;
-			font-size:1em;
-			margin:0;
-			padding:1em;
-			text-align:center;
-			font-family: Arial, "MS Trebuchet", sans-serif;
-		}
-	
+body{font-family:Helvetica,Arial,sans-serif;font-size:1.5em;margin:0;text-align:center;background-color:#8f0;color:#fff;}
+h1{font-weight:normal;font-size:2em;text-transform: uppercase;}
+form{padding:1em;}
+input{border:0;font-size:1.2em;margin:0;padding:.5em;text-align:center;font-family:Arial,"MS Trebuchet",sans-serif;}
+input[type=submit]{background-color:#73BE1E;color:#fff;}
+input#u{border-right:1px solid #ECFDD1;}
 		</style>
-		<script type="text/javascript" charset="utf-8">
-			function value(id,value){
-				if(value){
-					document.getElementById(id).value = value;
-				} else {
-					return document.getElementById(id).value
-				}
-			}
-			function example(u,s){ //not used yet
-				value('u',u); value('s',s);
-			}
-			function ui(){
-				empty = ((value('u') == '') || (value('s') == ''))
-				value('submit', (empty ? 'trsslate' : 'trsslate!'));
-			}
-		</script>
 		<script type="text/javascript">
-			var _gaq = _gaq || [];
-			_gaq.push(['_setAccount', 'UA-1591924-9']);
-			_gaq.push(['_trackPageview']);
+			var _gaq = [['_setAccount', 'UA-1591924-9'],['_trackPageview']] 
 			(function() {
 				var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-				ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+				ga.src = 'http://www.google-analytics.com/ga.js';
 				var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
 			})();
 		</script>	
 	</head>
 	<body>
-		<form method="get" action="f">
-				<input id="submit" type="submit" value="trsslate"><br />
-				<input onChange="ui()" onKeyup="ui()" type="url" name="u" value="" id="u" placeholder="http://feed/rss.xml"><input onChange="ui()" onKeyup="ui()" type="text" name="s" id="s" value="" placeholder="#selector &gt; img">
+		<h1>Trsslate</h1>
+		<form method="get" action="/f">
+				<input type="url" name="u" value="" id="u" placeholder="http://feed/rss.xml"><input type="text" name="s" id="s" value="" placeholder="#selector &gt; img"><input type="submit" value="&gt;">
 		</form>
 		<p>Update a feed with content from the source pages</p>
 	</body>
