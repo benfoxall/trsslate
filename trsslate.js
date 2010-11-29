@@ -14,6 +14,9 @@ var trsslate = function(feed_url,selector,output){
 		if(err || (rss.items == undefined)){
 			error("Could not parse rss",output)
 		} else {
+			while(rss.items.length > 10){
+				rss.items.pop();
+			}
 			var count = rss.items.length;
 			for (var i=0; i < rss.items.length; i++) {
 				appendDom(rss.items[i],function(){
